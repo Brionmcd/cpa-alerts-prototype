@@ -1,8 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useARAlerts, useExpenseAlerts, useAlertRules } from './hooks'
 import { formatCurrency, formatPhoneNumber } from './utils/formatters'
 import { DISMISS_REASONS, SNOOZE_OPTIONS } from './services/types'
 import { utilityApi } from './services/api'
+import { AIProvider, useAI } from './context/AIContext'
+import {
+  AIInsightsPanel,
+  AIRoutingBadge,
+  CommandBar,
+  DraftPanel,
+  AIActivityLog,
+  MessageViewer,
+} from './components/ai'
 
 // Icons as components
 const DashboardIcon = () => (
@@ -42,6 +51,12 @@ const RefreshIcon = () => (
   </svg>
 )
 
+const SparklesIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  </svg>
+)
+
 // Utility function for severity colors
 const getSeverityColor = (severity) => {
   switch (severity) {
@@ -77,7 +92,9 @@ function Toast({ message, onClose }) {
 }
 
 // Sidebar Component
-function Sidebar({ activeView, setActiveView, onResetData }) {
+function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity }) {
+  const { activityLog } = useAI()
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
     { id: 'ar-alerts', label: 'AR Alerts', icon: <ARIcon /> },
@@ -106,8 +123,30 @@ function Sidebar({ activeView, setActiveView, onResetData }) {
             <span>{item.label}</span>
           </button>
         ))}
+
+        {/* AI Activity Button */}
+        <button
+          onClick={onOpenAIActivity}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-4 text-purple-300 hover:bg-purple-900/30 hover:text-purple-200 transition-colors border border-purple-500/30"
+        >
+          <SparklesIcon />
+          <span>AI Activity</span>
+          {activityLog.length > 0 && (
+            <span className="ml-auto px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
+              {activityLog.length}
+            </span>
+          )}
+        </button>
       </nav>
       <div className="p-4 border-t border-slate-700">
+        <div className="mb-3 px-3 py-2 bg-purple-900/20 rounded-lg border border-purple-500/20">
+          <div className="flex items-center gap-2 text-purple-300 text-xs">
+            <SparklesIcon />
+            <span>Press</span>
+            <kbd className="px-1.5 py-0.5 bg-purple-800/50 rounded text-purple-200">⌘K</kbd>
+            <span>for AI commands</span>
+          </div>
+        </div>
         <button
           onClick={onResetData}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
@@ -292,7 +331,10 @@ function ARAlertCard({ alert, onClick }) {
           <p className={`text-lg font-semibold ${colors.text}`}>{alert.daysOverdue} days</p>
         </div>
       </div>
-      <p className="text-sm text-gray-500 mt-3">{alert.invoices?.length || 0} invoice(s)</p>
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-sm text-gray-500">{alert.invoices?.length || 0} invoice(s)</p>
+        <AIRoutingBadge alert={alert} alertType="ar" compact />
+      </div>
     </button>
   )
 }
@@ -341,9 +383,12 @@ function ExpenseAlertCard({ alert, onClick }) {
           <h4 className="font-semibold text-gray-900">{alert.category}</h4>
           <p className="text-sm text-gray-500">{alert.period}</p>
         </div>
-        <span className={`px-2 py-1 text-xs font-medium text-white rounded ${colors.badge} capitalize`}>
-          {alert.severity}
-        </span>
+        <div className="flex items-center gap-2">
+          <AIRoutingBadge alert={alert} alertType="expense" compact />
+          <span className={`px-2 py-1 text-xs font-medium text-white rounded ${colors.badge} capitalize`}>
+            {alert.severity}
+          </span>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -394,13 +439,14 @@ function ExpenseAlertsView({ alerts, isLoading, onAlertClick }) {
 }
 
 // Alert Detail Panel Component
-function AlertDetailPanel({ alert, type, onClose, onMarkHandled, onSnooze, onDismiss }) {
+function AlertDetailPanel({ alert, type, onClose, onMarkHandled, onSnooze, onDismiss, onOpenDraft }) {
   const [actionNote, setActionNote] = useState('')
   const [snoozeDuration, setSnoozeDuration] = useState(SNOOZE_OPTIONS[0].days)
   const [dismissReason, setDismissReason] = useState('')
   const [showSnoozeOptions, setShowSnoozeOptions] = useState(false)
   const [showDismissOptions, setShowDismissOptions] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showAIInsights, setShowAIInsights] = useState(true)
 
   const colors = getSeverityColor(alert.severity)
 
@@ -457,6 +503,31 @@ function AlertDetailPanel({ alert, type, onClose, onMarkHandled, onSnooze, onDis
 
         {/* Content */}
         <div className="p-6">
+          {/* AI Insights Section */}
+          <div className="mb-6">
+            <button
+              onClick={() => setShowAIInsights(!showAIInsights)}
+              className="flex items-center justify-between w-full text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                AI Insights
+              </span>
+              <svg className={`w-4 h-4 transition-transform ${showAIInsights ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showAIInsights && (
+              <AIInsightsPanel
+                alert={alert}
+                alertType={type}
+                onDraftEmail={() => onOpenDraft?.(alert, type)}
+              />
+            )}
+          </div>
+
           {type === 'ar' ? (
             <>
               {/* Contact Info */}
@@ -859,12 +930,46 @@ function AlertRulesView({ rules, isLoading, onToggleRule, onCreateRule, showToas
   )
 }
 
-// Main App Component
-function App() {
+// Main App Component - Inner (wrapped by AIProvider)
+function AppContent() {
   const [activeView, setActiveView] = useState('dashboard')
   const [selectedAlert, setSelectedAlert] = useState(null)
   const [selectedAlertType, setSelectedAlertType] = useState(null)
   const [toast, setToast] = useState(null)
+
+  // AI-related state
+  const [showCommandBar, setShowCommandBar] = useState(false)
+  const [showDraftPanel, setShowDraftPanel] = useState(false)
+  const [showAIActivityLog, setShowAIActivityLog] = useState(false)
+  const [showMessageViewer, setShowMessageViewer] = useState(false)
+  const [selectedMessage, setSelectedMessage] = useState(null)
+  const [draftAlert, setDraftAlert] = useState(null)
+  const [draftAlertType, setDraftAlertType] = useState(null)
+
+  // Keyboard shortcut for command bar
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowCommandBar(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Listen for viewSentMessage events
+  useEffect(() => {
+    const handleViewMessage = (e) => {
+      // Find the message by ID from the AI context
+      // For now, just open the activity log
+      setShowAIActivityLog(true)
+    }
+
+    window.addEventListener('viewSentMessage', handleViewMessage)
+    return () => window.removeEventListener('viewSentMessage', handleViewMessage)
+  }, [])
 
   // Use custom hooks for data
   const {
@@ -963,6 +1068,48 @@ function App() {
     showToast('Demo data has been reset')
   }
 
+  // AI Handlers
+  const handleOpenDraft = (alert, alertType) => {
+    setDraftAlert(alert)
+    setDraftAlertType(alertType)
+    setShowDraftPanel(true)
+  }
+
+  const handleDraftSent = (message) => {
+    showToast(`Message sent to ${message.recipient}`)
+  }
+
+  const handleCommandAction = (result) => {
+    // Handle command actions
+    if (!selectedAlert) {
+      showToast('Please select an alert first')
+      return
+    }
+
+    switch (result.action) {
+      case 'snooze':
+        handleSnooze(selectedAlert.id, result.parameters?.days || 1)
+        break
+      case 'mark_handled':
+        handleMarkHandled(selectedAlert.id, result.parameters?.note)
+        break
+      case 'assign':
+        showToast(`Assigned to ${result.parameters?.assignee}`)
+        break
+      case 'draft_email':
+        handleOpenDraft(selectedAlert, selectedAlertType)
+        break
+      default:
+        showToast(`Action: ${result.action}`)
+    }
+  }
+
+  const handleViewMessage = (message) => {
+    setSelectedMessage(message)
+    setShowMessageViewer(true)
+    setShowAIActivityLog(false)
+  }
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -1011,6 +1158,7 @@ function App() {
         activeView={activeView}
         setActiveView={setActiveView}
         onResetData={handleResetData}
+        onOpenAIActivity={() => setShowAIActivityLog(true)}
       />
       <main className="flex-1 bg-[#f1f5f9] p-8 overflow-y-auto">
         {renderView()}
@@ -1024,8 +1172,38 @@ function App() {
           onMarkHandled={handleMarkHandled}
           onSnooze={handleSnooze}
           onDismiss={handleDismiss}
+          onOpenDraft={handleOpenDraft}
         />
       )}
+
+      {/* AI Modals */}
+      <CommandBar
+        isOpen={showCommandBar}
+        onClose={() => setShowCommandBar(false)}
+        currentAlert={selectedAlert}
+        alertType={selectedAlertType}
+        onAction={handleCommandAction}
+      />
+
+      <DraftPanel
+        isOpen={showDraftPanel}
+        onClose={() => setShowDraftPanel(false)}
+        alert={draftAlert}
+        alertType={draftAlertType}
+        onSend={handleDraftSent}
+      />
+
+      <AIActivityLog
+        isOpen={showAIActivityLog}
+        onClose={() => setShowAIActivityLog(false)}
+        onViewMessage={handleViewMessage}
+      />
+
+      <MessageViewer
+        isOpen={showMessageViewer}
+        onClose={() => setShowMessageViewer(false)}
+        message={selectedMessage}
+      />
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
@@ -1045,6 +1223,15 @@ function App() {
         }
       `}</style>
     </div>
+  )
+}
+
+// Main App Component - Wrapper with AIProvider
+function App() {
+  return (
+    <AIProvider>
+      <AppContent />
+    </AIProvider>
   )
 }
 

@@ -112,7 +112,7 @@ function Toast({ message, onClose }) {
 }
 
 // Sidebar Component
-function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onShowImpact }) {
+function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onShowImpact, onShowWelcome }) {
   const { activityLog } = useAI()
 
   const navItems = [
@@ -123,8 +123,8 @@ function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onS
   ]
 
   return (
-    <div className="w-64 bg-[#0f172a] min-h-screen flex flex-col">
-      <div className="p-6">
+    <div className="w-64 bg-[#0f172a] h-screen flex flex-col sticky top-0">
+      <div className="p-6 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-emerald-600 rounded-lg">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onS
         </div>
         <p className="text-slate-400 text-sm mt-2">Intelligent Practice Monitoring</p>
       </div>
-      <nav className="flex-1 px-4">
+      <nav className="flex-1 px-4 overflow-y-auto">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -166,28 +166,44 @@ function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onS
         </button>
       </nav>
 
-      {/* ROI Summary in Sidebar */}
-      <div className="px-4 mb-4">
-        <ROISummaryCompact onSeeFullReport={onShowImpact} />
-      </div>
-
-      <div className="p-4 border-t border-slate-700">
-        <div className="mb-3 px-3 py-2 bg-purple-900/20 rounded-lg border border-purple-500/20">
-          <div className="flex items-center gap-2 text-purple-300 text-xs">
-            <SparklesIcon />
-            <span>Press</span>
-            <kbd className="px-1.5 py-0.5 bg-purple-800/50 rounded text-purple-200">⌘K</kbd>
-            <span>for AI commands</span>
-          </div>
+      {/* Bottom Section - Always Visible */}
+      <div className="flex-shrink-0">
+        {/* ROI Summary in Sidebar */}
+        <div className="px-4 mb-4">
+          <ROISummaryCompact onSeeFullReport={onShowImpact} />
         </div>
-        <button
-          onClick={onResetData}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
-        >
-          <RefreshIcon />
-          Reset Demo Data
-        </button>
-        <p className="text-slate-500 text-xs mt-3 text-center">Version 1.0.0</p>
+
+        <div className="p-4 border-t border-slate-700">
+          <div className="mb-3 px-3 py-2 bg-purple-900/20 rounded-lg border border-purple-500/20">
+            <div className="flex items-center gap-2 text-purple-300 text-xs">
+              <SparklesIcon />
+              <span>Press</span>
+              <kbd className="px-1.5 py-0.5 bg-purple-800/50 rounded text-purple-200">⌘K</kbd>
+              <span>for AI commands</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onShowWelcome}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
+              title="View product introduction"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              About
+            </button>
+            <button
+              onClick={onResetData}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
+              title="Reset all demo data"
+            >
+              <RefreshIcon />
+              Reset
+            </button>
+          </div>
+          <p className="text-slate-500 text-xs mt-3 text-center">Version 1.0.0</p>
+        </div>
       </div>
     </div>
   )
@@ -1252,6 +1268,7 @@ function AppContent() {
           onResetData={handleResetData}
           onOpenAIActivity={() => setShowAIActivityLog(true)}
           onShowImpact={() => setShowImpactPanel(true)}
+          onShowWelcome={() => setShowWelcome(true)}
         />
         <main className="flex-1 bg-[#f1f5f9] p-8 overflow-y-auto pb-20">
           {renderView()}

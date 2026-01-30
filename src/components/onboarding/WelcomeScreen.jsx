@@ -59,15 +59,26 @@ export function WelcomeScreen({ onGetStarted }) {
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%239C92AC%22%20fill-opacity%3D%220.03%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50"></div>
 
           <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
-            {/* Logo & Tagline */}
-            <div className="flex items-center gap-4 mb-12">
-              <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                <ShieldIcon />
+            {/* Header with Logo & CTA */}
+            <div className="flex items-center justify-between mb-12">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                  <ShieldIcon />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Sentinel</h1>
+                  <p className="text-emerald-400 text-sm font-medium">Your AI-Powered Financial Watchdog</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Sentinel</h1>
-                <p className="text-emerald-400 text-sm font-medium">Your AI-Powered Financial Watchdog</p>
-              </div>
+              <button
+                onClick={handleDismiss}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-emerald-900/30"
+              >
+                See It In Action
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
             </div>
 
             {/* Hero Content */}
@@ -75,9 +86,18 @@ export function WelcomeScreen({ onGetStarted }) {
               <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
                 Stop Letting Revenue Slip Through the Cracks
               </h2>
-              <p className="text-xl text-slate-300 leading-relaxed">
+              <p className="text-xl text-slate-300 leading-relaxed mb-8">
                 Intelligent monitoring that catches the problems your team is too busy to track—before they become write-offs.
               </p>
+              <button
+                onClick={handleDismiss}
+                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors flex items-center gap-2 md:hidden"
+              >
+                See It In Action
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </button>
             </div>
           </div>
         </section>

@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useARAlerts, useExpenseAlerts, useAlertRules } from './hooks'
 import { formatCurrency, formatPhoneNumber } from './utils/formatters'
-import { DISMISS_REASONS, SNOOZE_OPTIONS } from './services/types'
+import {
+  DISMISS_REASONS,
+  SNOOZE_OPTIONS,
+  CLIENT_STATUS_LABELS,
+  CLIENT_STATUS_COLORS,
+} from './services/types'
 import { utilityApi } from './services/api'
 import { AIProvider, useAI } from './context/AIContext'
 import {
@@ -12,6 +17,11 @@ import {
   AIActivityLog,
   MessageViewer,
 } from './components/ai'
+import {
+  ARAgingSummary,
+  ReminderApprovalQueue,
+  ClientStatusBadge,
+} from './components/ar'
 
 // Icons as components
 const DashboardIcon = () => (
@@ -205,13 +215,19 @@ function PriorityAlertItem({ alert, type, onClick }) {
 }
 
 // Dashboard View
-function DashboardView({ arAlerts, expenseAlerts, isLoading, onAlertClick }) {
+function DashboardView({ arAlerts, expenseAlerts, isLoading, onAlertClick, showToast, onBucketClick }) {
   const criticalCount = arAlerts.filter(a => a.severity === 'critical').length +
                         expenseAlerts.filter(a => a.severity === 'critical').length
   const warningCount = arAlerts.filter(a => a.severity === 'warning').length +
                        expenseAlerts.filter(a => a.severity === 'warning').length
   const totalAR = arAlerts.reduce((sum, a) => sum + a.overdueAmount, 0)
   const totalExpenseVariance = expenseAlerts.reduce((sum, a) => sum + (a.actualAmount - a.budgetAmount), 0)
+
+  // Count 90+ day AR
+  const ninetyPlusCount = arAlerts.filter(a => a.daysOverdue >= 90).length
+  const ninetyPlusAmount = arAlerts
+    .filter(a => a.daysOverdue >= 90)
+    .reduce((sum, a) => sum + a.overdueAmount, 0)
 
   const priorityAlerts = [
     ...arAlerts.filter(a => a.severity === 'critical').map(a => ({ ...a, type: 'ar' })),
@@ -221,11 +237,11 @@ function DashboardView({ arAlerts, expenseAlerts, isLoading, onAlertClick }) {
   ].slice(0, 5)
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-4 gap-6">
         <SummaryCard
           title="Critical Alerts"
           value={criticalCount}
@@ -234,16 +250,16 @@ function DashboardView({ arAlerts, expenseAlerts, isLoading, onAlertClick }) {
           isLoading={isLoading}
         />
         <SummaryCard
-          title="Warnings"
-          value={warningCount}
-          subtitle="Review within 48 hours"
-          color="text-amber-600"
+          title="90+ Day AR"
+          value={formatCurrency(ninetyPlusAmount)}
+          subtitle={`${ninetyPlusCount} accounts overdue`}
+          color="text-red-600"
           isLoading={isLoading}
         />
         <SummaryCard
           title="Total AR Outstanding"
           value={formatCurrency(totalAR)}
-          subtitle={`${arAlerts.length} overdue invoices`}
+          subtitle={`${arAlerts.length} overdue accounts`}
           color="text-gray-900"
           isLoading={isLoading}
         />
@@ -255,6 +271,12 @@ function DashboardView({ arAlerts, expenseAlerts, isLoading, onAlertClick }) {
           isLoading={isLoading}
         />
       </div>
+
+      {/* AR Aging Summary */}
+      <ARAgingSummary onBucketClick={onBucketClick} />
+
+      {/* Reminder Approval Queue */}
+      <ReminderApprovalQueue showToast={showToast} />
 
       {/* Priority Alerts */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -306,6 +328,7 @@ function FilterTabs({ activeFilter, setActiveFilter }) {
 // AR Alert Card Component
 function ARAlertCard({ alert, onClick }) {
   const colors = getSeverityColor(alert.severity)
+  const statusColors = CLIENT_STATUS_COLORS[alert.clientStatus] || CLIENT_STATUS_COLORS.normal
 
   return (
     <button
@@ -313,11 +336,18 @@ function ARAlertCard({ alert, onClick }) {
       className="w-full text-left bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between mb-3">
-        <div>
-          <h4 className="font-semibold text-gray-900">{alert.clientName}</h4>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-semibold text-gray-900">{alert.clientName}</h4>
+            {alert.clientStatus && alert.clientStatus !== 'normal' && (
+              <span className={`px-2 py-0.5 text-xs rounded-full ${statusColors.bg} ${statusColors.text}`}>
+                {CLIENT_STATUS_LABELS[alert.clientStatus]}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500">{alert.contact?.name || 'No contact'}</p>
         </div>
-        <span className={`px-2 py-1 text-xs font-medium text-white rounded ${colors.badge} capitalize`}>
+        <span className={`px-2 py-1 text-xs font-medium text-white rounded ${colors.badge} capitalize ml-2`}>
           {alert.severity}
         </span>
       </div>
@@ -332,7 +362,14 @@ function ARAlertCard({ alert, onClick }) {
         </div>
       </div>
       <div className="flex items-center justify-between mt-3">
-        <p className="text-sm text-gray-500">{alert.invoices?.length || 0} invoice(s)</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-gray-500">{alert.invoices?.length || 0} invoice(s)</p>
+          {alert.scheduledReminders?.length > 0 && (
+            <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full">
+              {alert.scheduledReminders.length} pending reminder
+            </span>
+          )}
+        </div>
         <AIRoutingBadge alert={alert} alertType="ar" compact />
       </div>
     </button>
@@ -1110,6 +1147,12 @@ function AppContent() {
     setShowAIActivityLog(false)
   }
 
+  const handleBucketClick = (bucket) => {
+    // Navigate to AR alerts filtered by bucket
+    setActiveView('ar-alerts')
+    // Could add bucket filter state here if needed
+  }
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -1119,6 +1162,8 @@ function AppContent() {
             expenseAlerts={expenseAlerts}
             isLoading={isLoading}
             onAlertClick={handleAlertClick}
+            showToast={showToast}
+            onBucketClick={handleBucketClick}
           />
         )
       case 'ar-alerts':

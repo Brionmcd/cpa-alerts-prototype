@@ -3,13 +3,19 @@
  *
  * Implements the data provider interface with realistic mock data.
  * Includes simulated network delays and localStorage persistence.
+ *
+ * Updated to reflect real AR workflow:
+ * - $7M+ in 90+ day aging to illustrate the problem
+ * - Client status categories for automation control
+ * - Scheduled reminders with approval workflow
  */
 
 import { storage, STORAGE_KEYS } from '../../../utils/storage'
 import { getCurrentPeriod } from '../../../utils/formatters'
-import { SEVERITY } from '../../types'
+import { SEVERITY, CLIENT_STATUS, REMINDER_STATUS } from '../../types'
 import {
   CLIENTS,
+  PARTNERS,
   EXPENSE_CATEGORIES,
   relativeDateISO,
   getSeverityFromDays,
@@ -18,6 +24,10 @@ import {
   generateARNotes,
   generateExpenseDrivers,
   generateExpenseNotes,
+  getAgingBucket,
+  generateAiywynUrl,
+  generateScheduledReminders,
+  generateSentReminders,
 } from './generators'
 
 // Simulated network delay (200-500ms)
@@ -28,21 +38,74 @@ const simulateDelay = () => new Promise(resolve =>
 /**
  * Generate AR alerts data
  * Uses relative dates so data never goes stale
+ *
+ * Distribution designed to show the $7M problem:
+ * - Significant amounts in 90+ day bucket
+ * - Mix of client statuses showing different automation behaviors
  */
 const generateARAlerts = () => {
+  // Realistic distribution showing $7M+ in 90+ days
+  // Total AR: ~$9.5M, with $7M+ over 90 days
   const alertConfigs = [
-    { clientIndex: 0, daysOverdue: 94, amount: 47250 },
-    { clientIndex: 1, daysOverdue: 67, amount: 38900 },
-    { clientIndex: 2, daysOverdue: 45, amount: 24800 },
-    { clientIndex: 3, daysOverdue: 38, amount: 12650 },
-    { clientIndex: 4, daysOverdue: 21, amount: 8200 },
-    { clientIndex: 5, daysOverdue: 14, amount: 5200 },
+    // 120+ days - Critical (large amounts showing the problem)
+    { clientIndex: 0, daysOverdue: 145, amount: 847250 },    // Henderson - normal, big client
+    { clientIndex: 6, daysOverdue: 138, amount: 1250000 },   // Metro Construction - normal
+    { clientIndex: 8, daysOverdue: 132, amount: 680000 },    // Coastal Hospitality - normal
+    { clientIndex: 9, daysOverdue: 128, amount: 425000 },    // Premier Auto - slow payer
+    { clientIndex: 11, daysOverdue: 122, amount: 312000 },   // Heritage Properties - sensitive
+
+    // 90-120 days - Critical
+    { clientIndex: 1, daysOverdue: 112, amount: 1890000 },   // Westbrook Mfg - slow payer
+    { clientIndex: 2, daysOverdue: 98, amount: 567000 },     // Pinnacle RE - normal
+    { clientIndex: 10, daysOverdue: 94, amount: 389000 },    // Valley Tech - normal
+    { clientIndex: 7, daysOverdue: 91, amount: 156000 },     // Sunrise Medical - disputed
+
+    // 60-90 days - Warning
+    { clientIndex: 3, daysOverdue: 78, amount: 124500 },     // Chen Dental - sensitive
+    { clientIndex: 5, daysOverdue: 72, amount: 287000 },     // Thompson Legal - normal
+    { clientIndex: 4, daysOverdue: 65, amount: 98500 },      // Oakwood - payment arrangement
+
+    // 30-60 days - Info/Warning
+    { clientIndex: 0, daysOverdue: 45, amount: 78900 },      // Henderson (second alert)
+    { clientIndex: 6, daysOverdue: 38, amount: 156000 },     // Metro Construction (second)
+
+    // Under 30 days - Info (recent, no action needed)
+    { clientIndex: 2, daysOverdue: 22, amount: 45600 },      // Pinnacle (second)
+    { clientIndex: 5, daysOverdue: 14, amount: 32500 },      // Thompson (second)
   ]
 
   return alertConfigs.map((config, index) => {
     const client = CLIENTS[config.clientIndex]
+    const partner = PARTNERS[client.partnerIndex]
     const severity = getSeverityFromDays(config.daysOverdue)
     const invoices = generateInvoices(config.clientIndex, config.daysOverdue, config.amount)
+    const agingBucket = getAgingBucket(config.daysOverdue)
+
+    // Add Aiwyn URLs to invoices
+    const invoicesWithUrls = invoices.map(inv => ({
+      ...inv,
+      aiywynPaymentUrl: generateAiywynUrl(client.id, inv.id),
+    }))
+
+    // Get primary contact (for backward compatibility)
+    const primaryContact = client.contacts.primary
+
+    // Generate reminders based on status and aging
+    const scheduledReminders = generateScheduledReminders(
+      `ar-${index + 1}`,
+      client.id,
+      client.status,
+      config.daysOverdue,
+      primaryContact,
+      client.contacts.escalation
+    )
+
+    const sentReminders = generateSentReminders(
+      `ar-${index + 1}`,
+      client.id,
+      config.daysOverdue,
+      primaryContact
+    )
 
     return {
       id: `ar-${index + 1}`,
@@ -51,18 +114,26 @@ const generateARAlerts = () => {
       severity,
       overdueAmount: config.amount,
       daysOverdue: config.daysOverdue,
+      agingBucket,
+      clientStatus: client.status,
+      contacts: client.contacts,
+      // Legacy contact field for backward compatibility
       contact: {
-        name: client.contact.name,
-        email: client.contact.email,
-        phone: client.contact.phone,
+        name: primaryContact.name,
+        email: primaryContact.email,
+        phone: primaryContact.phone,
       },
-      invoices,
-      notes: generateARNotes(severity, config.daysOverdue),
+      invoices: invoicesWithUrls,
+      notes: generateARNotes(severity, config.daysOverdue, client.status),
       createdAt: relativeDateISO(config.daysOverdue),
       handledAt: null,
       snoozedUntil: null,
       dismissedAt: null,
       dismissReason: null,
+      scheduledReminders,
+      sentReminders,
+      partnerName: partner.name,
+      aiywynClientUrl: generateAiywynUrl(client.id, null),
     }
   })
 }
@@ -373,6 +444,126 @@ export const mockProvider = {
     storage.set(STORAGE_KEYS.CUSTOM_RULES, filtered)
 
     return { success: true }
+  },
+
+  // ============ Reminder Management ============
+
+  async approveReminder(reminderId, partnerName) {
+    await simulateDelay()
+    const approvals = storage.get(STORAGE_KEYS.REMINDER_APPROVALS, {})
+    approvals[reminderId] = {
+      approvedBy: partnerName,
+      approvedAt: new Date().toISOString(),
+    }
+    storage.set(STORAGE_KEYS.REMINDER_APPROVALS, approvals)
+    return { success: true }
+  },
+
+  async cancelReminder(reminderId) {
+    await simulateDelay()
+    const cancellations = storage.get(STORAGE_KEYS.REMINDER_CANCELLATIONS, [])
+    cancellations.push(reminderId)
+    storage.set(STORAGE_KEYS.REMINDER_CANCELLATIONS, cancellations)
+    return { success: true }
+  },
+
+  async sendReminder(reminderId) {
+    await simulateDelay()
+    const sent = storage.get(STORAGE_KEYS.SENT_REMINDERS, {})
+    sent[reminderId] = {
+      sentAt: new Date().toISOString(),
+    }
+    storage.set(STORAGE_KEYS.SENT_REMINDERS, sent)
+    return { success: true }
+  },
+
+  async updateClientStatus(clientId, newStatus) {
+    await simulateDelay()
+    const statuses = storage.get(STORAGE_KEYS.CLIENT_STATUSES, {})
+    statuses[clientId] = newStatus
+    storage.set(STORAGE_KEYS.CLIENT_STATUSES, statuses)
+    return { success: true }
+  },
+
+  async getClientStatuses() {
+    await simulateDelay()
+    return storage.get(STORAGE_KEYS.CLIENT_STATUSES, {})
+  },
+
+  async getPendingApprovals() {
+    await simulateDelay()
+    const alerts = generateARAlerts()
+    const approvals = storage.get(STORAGE_KEYS.REMINDER_APPROVALS, {})
+    const cancellations = storage.get(STORAGE_KEYS.REMINDER_CANCELLATIONS, [])
+    const sent = storage.get(STORAGE_KEYS.SENT_REMINDERS, {})
+
+    // Collect all reminders needing approval
+    const pending = []
+    alerts.forEach(alert => {
+      alert.scheduledReminders.forEach(reminder => {
+        if (reminder.requiresApproval &&
+            !approvals[reminder.id] &&
+            !cancellations.includes(reminder.id) &&
+            !sent[reminder.id]) {
+          pending.push({
+            ...reminder,
+            clientName: alert.clientName,
+            overdueAmount: alert.overdueAmount,
+            daysOverdue: alert.daysOverdue,
+            clientStatus: alert.clientStatus,
+            partnerName: alert.partnerName,
+          })
+        }
+      })
+    })
+
+    return pending
+  },
+
+  async getARAgingSummary() {
+    await simulateDelay()
+    let alerts = generateARAlerts()
+    alerts = applyStoredActions(alerts, 'ar')
+    alerts = filterActiveAlerts(alerts)
+
+    const summary = {
+      current: { count: 0, amount: 0 },
+      thirty: { count: 0, amount: 0 },
+      sixty: { count: 0, amount: 0 },
+      ninety: { count: 0, amount: 0 },
+      oneTwentyPlus: { count: 0, amount: 0 },
+      total: { count: 0, amount: 0 },
+    }
+
+    alerts.forEach(alert => {
+      summary.total.count++
+      summary.total.amount += alert.overdueAmount
+
+      if (alert.agingBucket === 0) {
+        summary.current.count++
+        summary.current.amount += alert.overdueAmount
+      } else if (alert.agingBucket === 30) {
+        summary.thirty.count++
+        summary.thirty.amount += alert.overdueAmount
+      } else if (alert.agingBucket === 60) {
+        summary.sixty.count++
+        summary.sixty.amount += alert.overdueAmount
+      } else if (alert.agingBucket === 90) {
+        summary.ninety.count++
+        summary.ninety.amount += alert.overdueAmount
+      } else {
+        summary.oneTwentyPlus.count++
+        summary.oneTwentyPlus.amount += alert.overdueAmount
+      }
+    })
+
+    // Calculate 90+ total for the $7M highlight
+    summary.ninetyPlus = {
+      count: summary.ninety.count + summary.oneTwentyPlus.count,
+      amount: summary.ninety.amount + summary.oneTwentyPlus.amount,
+    }
+
+    return summary
   },
 
   // ============ Utility ============

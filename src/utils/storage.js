@@ -53,4 +53,10 @@ export const STORAGE_KEYS = {
   ALERT_ACTIONS: 'alert_actions',
   CUSTOM_RULES: 'custom_rules',
   RULE_TOGGLES: 'rule_toggles',
+  // New keys for reminder system
+  REMINDER_APPROVALS: 'reminder_approvals',
+  REMINDER_CANCELLATIONS: 'reminder_cancellations',
+  SENT_REMINDERS: 'sent_reminders',
+  CLIENT_STATUSES: 'client_statuses',
+  EMAIL_TEMPLATES: 'email_templates',
 }

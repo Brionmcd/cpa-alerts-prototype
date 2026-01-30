@@ -131,6 +131,65 @@ export const alertRulesApi = {
 }
 
 /**
+ * Reminder Management API
+ */
+export const reminderApi = {
+  /**
+   * Get all reminders pending partner approval
+   * @returns {Promise<ScheduledReminder[]>}
+   */
+  getPendingApprovals: () => provider.getPendingApprovals(),
+
+  /**
+   * Approve a reminder for sending
+   * @param {string} reminderId
+   * @param {string} partnerName
+   */
+  approve: (reminderId, partnerName) => provider.approveReminder(reminderId, partnerName),
+
+  /**
+   * Cancel a scheduled reminder
+   * @param {string} reminderId
+   */
+  cancel: (reminderId) => provider.cancelReminder(reminderId),
+
+  /**
+   * Mark a reminder as sent
+   * @param {string} reminderId
+   */
+  markSent: (reminderId) => provider.sendReminder(reminderId),
+}
+
+/**
+ * Client Management API
+ */
+export const clientApi = {
+  /**
+   * Update a client's status
+   * @param {string} clientId
+   * @param {ClientStatus} status
+   */
+  updateStatus: (clientId, status) => provider.updateClientStatus(clientId, status),
+
+  /**
+   * Get all client status overrides
+   * @returns {Promise<Object>}
+   */
+  getStatuses: () => provider.getClientStatuses(),
+}
+
+/**
+ * AR Aging API
+ */
+export const arAgingApi = {
+  /**
+   * Get AR aging summary by bucket
+   * @returns {Promise<AgingSummary>}
+   */
+  getSummary: () => provider.getARAgingSummary(),
+}
+
+/**
  * Utility API
  */
 export const utilityApi = {
@@ -145,5 +204,8 @@ export default {
   arAlerts: arAlertsApi,
   expenseAlerts: expenseAlertsApi,
   alertRules: alertRulesApi,
+  reminders: reminderApi,
+  clients: clientApi,
+  arAging: arAgingApi,
   utility: utilityApi,
 }

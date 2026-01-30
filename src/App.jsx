@@ -111,6 +111,13 @@ function Toast({ message, onClose }) {
   )
 }
 
+// About Icon
+const AboutIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
 // Sidebar Component
 function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onShowImpact, onShowWelcome }) {
   const { activityLog } = useAI()
@@ -136,6 +143,17 @@ function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onS
         <p className="text-slate-400 text-sm mt-2">Intelligent Practice Monitoring</p>
       </div>
       <nav className="flex-1 px-4 overflow-y-auto">
+        {/* About Sentinel - Primary nav item */}
+        <button
+          onClick={onShowWelcome}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-200 transition-colors border border-emerald-500/30"
+        >
+          <AboutIcon />
+          <span>About Sentinel</span>
+        </button>
+
+        <div className="border-t border-slate-700 my-3"></div>
+
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -182,26 +200,14 @@ function Sidebar({ activeView, setActiveView, onResetData, onOpenAIActivity, onS
               <span>for AI commands</span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={onShowWelcome}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
-              title="View product introduction"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              About
-            </button>
-            <button
-              onClick={onResetData}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
-              title="Reset all demo data"
-            >
-              <RefreshIcon />
-              Reset
-            </button>
-          </div>
+          <button
+            onClick={onResetData}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm"
+            title="Reset all demo data"
+          >
+            <RefreshIcon />
+            Reset Demo Data
+          </button>
           <p className="text-slate-500 text-xs mt-3 text-center">Version 1.0.0</p>
         </div>
       </div>

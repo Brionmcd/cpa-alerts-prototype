@@ -34,7 +34,7 @@ export function ROISummaryBar({ onSeeFullReport }) {
 
           <div className="flex items-center gap-2">
             <span className="text-lg">📈</span>
-            <span className="text-emerald-400 font-semibold">14.2x</span>
+            <span className="text-emerald-400 font-semibold">18.7x</span>
             <span className="text-slate-400 text-xs">ROI</span>
           </div>
 
@@ -81,7 +81,7 @@ export function ROISummaryCompact({ onSeeFullReport }) {
         </div>
         <div className="flex items-center justify-between">
           <span className="text-slate-400 text-xs">ROI</span>
-          <span className="text-emerald-400 text-sm font-semibold">14.2x</span>
+          <span className="text-emerald-400 text-sm font-semibold">18.7x</span>
         </div>
       </div>
 

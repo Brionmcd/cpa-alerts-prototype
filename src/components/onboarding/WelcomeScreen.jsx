@@ -112,7 +112,7 @@ export function WelcomeScreen({ onGetStarted }) {
                 "Your AR clerks used to follow up on aging receivables. Then you implemented a new ERP system, and that process broke. Now you've got <span className="text-red-400 font-semibold">$7 million</span> sitting in 90+ day AR, and partners are running their own aging reports.
               </p>
               <p className="text-lg text-slate-300 mt-4 leading-relaxed">
-                That's <span className="text-amber-400 font-semibold">$200/hour partner time</span> doing $30/hour admin work—while revenue silently ages into write-offs."
+                That's <span className="text-amber-400 font-semibold">$500/hour partner time</span> doing $30/hour admin work—while revenue silently ages into write-offs."
               </p>
             </div>
 
@@ -211,7 +211,7 @@ export function WelcomeScreen({ onGetStarted }) {
               </div>
 
               <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-900/10 border border-emerald-700/30 rounded-xl p-6">
-                <p className="text-4xl font-bold text-emerald-400 mb-1">12-15x</p>
+                <p className="text-4xl font-bold text-emerald-400 mb-1">15-20x</p>
                 <p className="text-white font-medium mb-2">typical ROI</p>
                 <p className="text-slate-400 text-xs">In recovered revenue and time savings</p>
               </div>

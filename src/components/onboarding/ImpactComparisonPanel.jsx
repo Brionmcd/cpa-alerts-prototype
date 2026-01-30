@@ -143,7 +143,7 @@ export function ImpactComparisonPanel({ isOpen, onClose }) {
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                   <div>
                     <span className="font-semibold text-slate-800">Partner time saved:</span>
-                    <span className="text-emerald-600 ml-2">138 hours (valued at $27,600)</span>
+                    <span className="text-emerald-600 ml-2">138 hours (valued at $69,000)</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export function ImpactComparisonPanel({ isOpen, onClose }) {
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                   <div>
                     <span className="font-semibold text-slate-800">ROI to date:</span>
-                    <span className="text-emerald-600 ml-2 font-bold">14.2x</span>
+                    <span className="text-emerald-600 ml-2 font-bold">18.7x</span>
                   </div>
                 </div>
               </div>

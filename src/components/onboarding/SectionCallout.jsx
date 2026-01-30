@@ -19,8 +19,11 @@ const SparklesIcon = () => (
   </svg>
 )
 
-export function SectionCallout({ id, header, body, aiInsight, onDismiss }) {
-  const storageKey = `sentinel_callout_${id}_dismissed`
+export function SectionCallout({ section, id, header, body, aiInsight, onDismiss }) {
+  // Support both direct props and section lookup
+  const content = section ? CALLOUT_CONTENT[section] : { id, header, body, aiInsight }
+  const calloutId = content?.id || id
+  const storageKey = `sentinel_callout_${calloutId}_dismissed`
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function SectionCallout({ id, header, body, aiInsight, onDismiss }) {
     onDismiss?.()
   }
 
-  if (!isVisible) return null
+  if (!isVisible || !content) return null
 
   return (
     <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4 mb-4 relative">
@@ -55,16 +58,16 @@ export function SectionCallout({ id, header, body, aiInsight, onDismiss }) {
           <LightbulbIcon />
         </div>
         <div className="flex-1 pr-6">
-          <h4 className="font-semibold text-slate-800 text-sm mb-1">{header}</h4>
-          <p className="text-slate-600 text-sm leading-relaxed">{body}</p>
+          <h4 className="font-semibold text-slate-800 text-sm mb-1">{content.header}</h4>
+          <p className="text-slate-600 text-sm leading-relaxed">{content.body}</p>
 
-          {aiInsight && (
+          {content.aiInsight && (
             <div className="mt-3 flex items-start gap-2 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
               <span className="text-purple-500 mt-0.5">
                 <SparklesIcon />
               </span>
               <p className="text-purple-700 text-xs leading-relaxed">
-                <span className="font-semibold">AI Insight:</span> {aiInsight}
+                <span className="font-semibold">AI Insight:</span> {content.aiInsight}
               </p>
             </div>
           )}

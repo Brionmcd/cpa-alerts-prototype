@@ -41,7 +41,7 @@ export function DemoContextBanner() {
       <div className="flex items-start gap-4">
         <div className="text-2xl">📊</div>
         <div className="flex-1">
-          <h3 className="text-white font-semibold mb-1">Demo Scenario: Redpath & Company</h3>
+          <h3 className="text-white font-semibold mb-1">Demo Scenario: A Mid-Size CPA Firm</h3>
           <p className="text-slate-300 text-sm leading-relaxed mb-4">
             It's <span className="text-emerald-400 font-medium">January 15th, 2025</span>. Your firm implemented a new ERP system on October 1st. During the transition, AR follow-up fell through the cracks. Sentinel has been running for 6 weeks, and here's what it's found—and fixed.
           </p>
